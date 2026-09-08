@@ -1,16 +1,30 @@
-# React + Vite
+# Gabung IMO KAI 8
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Aplikasi berbasis web untuk menggabungkan dan memproses file PDF. Aplikasi ini dibangun menggunakan React (Vite) dan memungkinkan pengguna untuk mengunggah dokumen PDF, mengelola halamannya, serta menambahkan halaman sampul (cover page) secara otomatis langsung dari browser.
 
-Currently, two official plugins are available:
+## Fitur Utama
+- **Drag and Drop (Upload)**: Kemudahan dalam mengunggah file PDF.
+- **Penggabungan PDF**: Memproses dan menggabungkan beberapa halaman/file PDF.
+- **Pembuatan Cover Page**: Generate halaman depan (cover) secara terotomatisasi.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Cara Menjalankan secara Lokal
 
-## React Compiler
+1. Pastikan Anda telah menginstal [Node.js](https://nodejs.org/).
+2. Clone repository ini:
+   ```bash
+   git clone https://github.com/bayuence/Gabung-IMO-KAI-8.git
+   ```
+3. Masuk ke direktori proyek dan instal semua dependensi:
+   ```bash
+   cd gabungIMO
+   npm install
+   ```
+4. Jalankan server lokal:
+   ```bash
+   npm run dev
+   ```
+5. Buka `http://localhost:5173` di browser Anda.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Teknologi yang Digunakan
+- React.js + Vite
+- JavaScript modern (ES6+)
