@@ -8,10 +8,16 @@ export default defineConfig({
     // Optimalkan chunk agar loading lebih cepat
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          pdfLib: ['pdf-lib'],
-          icons: ['lucide-react'],
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor'
+          }
+          if (id.includes('node_modules/pdf-lib')) {
+            return 'pdfLib'
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'icons'
+          }
         },
       },
     },
