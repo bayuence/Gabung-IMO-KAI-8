@@ -7,24 +7,6 @@ Aplikasi berbasis web untuk menggabungkan dan memproses file PDF. Aplikasi ini d
 - **Penggabungan PDF**: Memproses dan menggabungkan beberapa halaman/file PDF.
 - **Pembuatan Cover Page**: Generate halaman depan (cover) secara terotomatisasi.
 
-## Cara Menjalankan secara Lokal
-
-1. Pastikan Anda telah menginstal [Node.js](https://nodejs.org/).
-2. Clone repository ini:
-   ```bash
-   git clone https://github.com/bayuence/Gabung-IMO-KAI-8.git
-   ```
-3. Masuk ke direktori proyek dan instal semua dependensi:
-   ```bash
-   cd gabungIMO
-   npm install
-   ```
-4. Jalankan server lokal:
-   ```bash
-   npm run dev
-   ```
-5. Buka `http://localhost:5173` di browser Anda.
-
 ## Teknologi yang Digunakan
 - React.js + Vite
 - JavaScript modern (ES6+)
