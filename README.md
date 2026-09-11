@@ -1,4 +1,4 @@
-# Gabung IMO KAI 8
+# IMO Help Desk
 
 Aplikasi berbasis web untuk menggabungkan dan memproses file PDF. Aplikasi ini dibangun menggunakan React (Vite) dan memungkinkan pengguna untuk mengunggah dokumen PDF, mengelola halamannya, serta menambahkan halaman sampul (cover page) secara otomatis langsung dari browser.
 

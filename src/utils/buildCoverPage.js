@@ -4,7 +4,7 @@ import { rgb, StandardFonts } from 'pdf-lib';
  * Halaman sampul Laporan IO — A4 Landscape
  * Layout header: logo KAI (kiri) | garis oranye vertikal | judul 1 baris (kanan)
  */
-export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl) {
+export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl, jabatan = '', periode = '', stasiun = '') {
   const PW = 842;
   const PH = 595;
   const page = pdfDoc.addPage([PW, PH]);
@@ -24,23 +24,22 @@ export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl) {
   page.drawRectangle({ x: 0, y: 0, width: PW, height: PH, color: WHITE });
 
   // ── Border luar biru ──────────────────────────────────────────────────────
-  // Hanya border (isi transparan tidak bisa, jadi kita pakai WHITE agar tidak menimpa)
   page.drawRectangle({
     x: 15, y: 15, width: PW - 30, height: PH - 30,
     borderColor: BLUE, borderWidth: 1.5, color: WHITE,
   });
 
   // ── Tinggi area header: 100pt ─────────────────────────────────────────────
-  const HEADER_H  = 100;               // tinggi area header
-  const HEADER_Y  = PH - 15 - HEADER_H; // y bawah area header = 480
+  const HEADER_H  = 100;
+  const HEADER_Y  = PH - 15 - HEADER_H;
   // Garis oranye bawah header (tebal 2pt)
   page.drawRectangle({ x: 15, y: HEADER_Y, width: PW - 30, height: 2, color: ORANGE });
 
   // ── Logo KAI di kiri (center vertikal di area header) ────────────────────
   const LOGO_X     = 30;
-  const LOGO_Y     = HEADER_Y + 8;      // sedikit di atas garis oranye
+  const LOGO_Y     = HEADER_Y + 8;
   const LOGO_MAX_W = 130;
-  const LOGO_MAX_H = HEADER_H - 16;     // 84pt tinggi maks logo
+  const LOGO_MAX_H = HEADER_H - 16;
 
   try {
     const resp  = await fetch(logoUrl);
@@ -78,7 +77,6 @@ export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl) {
   const TX         = SEP_X + 18;
   const TITLE_TEXT = 'LAPORAN KEGIATAN PENGOPERASIAN PRASARANA (IO)';
   const TITLE_SIZE = 15;
-  // Hitung y tengah area header
   const TITLE_Y    = HEADER_Y + (HEADER_H / 2) + 10;
   const SUB_Y      = TITLE_Y - 20;
 
@@ -92,19 +90,30 @@ export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl) {
   });
 
   // ── Identitas ─────────────────────────────────────────────────────────────
-  const LX     = 35;   // label x
-  const CX     = 120;  // colon x
-  const VX     = 133;  // value x
-  const NAMA_Y = HEADER_Y - 45;
-  const NIPP_Y = NAMA_Y - 28;
+  const LX      = 35;   // label x
+  const CX      = 145;  // colon x  (diperlebar agar jabatan & stasiun muat)
+  const VX      = 158;  // value x
+  const ROW_GAP = 26;
 
-  page.drawText('NAMA', { x: LX, y: NAMA_Y, font: bold,    size: 11, color: BLUE  });
-  page.drawText(':',    { x: CX, y: NAMA_Y, font: bold,    size: 11, color: BLUE  });
-  page.drawText(nama,   { x: VX, y: NAMA_Y, font: regular, size: 11, color: DGRAY });
+  const NAMA_Y     = HEADER_Y - 42;
+  const NIPP_Y     = NAMA_Y    - ROW_GAP;
+  const JABATAN_Y  = NIPP_Y    - ROW_GAP;
+  const PERIODE_Y  = JABATAN_Y - ROW_GAP;
+  const STASIUN_Y  = PERIODE_Y - ROW_GAP;
 
-  page.drawText('NIPP', { x: LX, y: NIPP_Y, font: bold,    size: 11, color: BLUE  });
-  page.drawText(':',    { x: CX, y: NIPP_Y, font: bold,    size: 11, color: BLUE  });
-  page.drawText(nipp,   { x: VX, y: NIPP_Y, font: regular, size: 11, color: DGRAY });
+  const rows = [
+    { label: 'NAMA',          value: nama,    y: NAMA_Y    },
+    { label: 'NIPP',          value: nipp,    y: NIPP_Y    },
+    { label: 'JABATAN',       value: jabatan, y: JABATAN_Y },
+    { label: 'PERIODE',       value: periode, y: PERIODE_Y },
+    { label: 'NAMA STASIUN',  value: stasiun, y: STASIUN_Y },
+  ];
+
+  rows.forEach(({ label, value, y }) => {
+    page.drawText(label, { x: LX, y, font: bold,    size: 10, color: BLUE  });
+    page.drawText(':',   { x: CX, y, font: bold,    size: 10, color: BLUE  });
+    page.drawText(value, { x: VX, y, font: regular, size: 10, color: DGRAY });
+  });
 
   // ── PERHATIAN (pojok kiri bawah, font mikro) ──────────────────────────────
   const N_SIZE = 5.5;
@@ -124,3 +133,4 @@ export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl) {
     });
   });
 }
+
