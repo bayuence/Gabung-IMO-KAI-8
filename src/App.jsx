@@ -341,7 +341,7 @@ function App() {
 
               {/* Banner Butuh Bantuan */}
               <a
-                href="https://wa.me/6281234567890"
+                href="https://wa.me/6282131309313"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="wa-banner"
