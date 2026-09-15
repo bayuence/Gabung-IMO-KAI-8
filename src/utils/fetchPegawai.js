@@ -46,6 +46,21 @@ export async function fetchPegawaiByNipp(nipp) {
 
 // ── Mode 1: Apps Script ───────────────────────────────────────────────────────
 
+const BULAN_ID = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+function formatTanggal(dateString) {
+  if (!dateString || dateString === '-') return '-';
+  const d = new Date(dateString);
+  if (isNaN(d)) return dateString;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = BULAN_ID[d.getMonth()];
+  const yyyy = d.getFullYear();
+  return `${dd} ${mm} ${yyyy}`;
+}
+
 async function fetchViaAppsScript(nipp) {
   let res;
   try {
@@ -65,8 +80,8 @@ async function fetchViaAppsScript(nipp) {
     nama:        json.nama,
     jabatan:     json.jabatan,
     stasiun:     json.stasiun,
-    tmtJabatan:  json.tmtJabatan  || '-',
-    tmtPensiun:  json.tmtPensiun  || '-',
+    tmtJabatan:  formatTanggal(json.tmtJabatan),
+    tmtPensiun:  formatTanggal(json.tmtPensiun),
   };
 }
 
