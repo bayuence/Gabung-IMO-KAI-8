@@ -1,4 +1,4 @@
-﻿import { rgb, StandardFonts } from 'pdf-lib';
+import { rgb, StandardFonts } from 'pdf-lib';
 
 /**
  * Halaman sampul Laporan IO
@@ -8,7 +8,7 @@
  */
 export async function buildCoverPage(
   pdfDoc, nama, nipp, logoUrl,
-  jabatan = '', periode = '', stasiun = '',
+  jabatan = '', periode = '', tmtJabatan = '', tmtPensiun = '',
   smartcardImageBytes = null,
 ) {
   const bold    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -35,31 +35,35 @@ export async function buildCoverPage(
     }
   }
 
-  // Ukuran halaman
-  const MARGIN   = 15;
-  const HEADER_H = 100;
-  const ROW_GAP  = 26;
-  const BIO_H    = 42 + 4 * ROW_GAP + 20;
-  const SC_GAP   = 12;
+  // Ukuran halaman (A4 Portrait)
+  const PW = 595;
+  const PH = 842;
+  const MARGIN = 30;
+  const HEADER_H = 80;
+  const ROW_GAP = 26;
+  const BIO_H = 50 + 5 * ROW_GAP + 20;
+  const SC_GAP = 50;
+
+  const HEADER_Y = PH - MARGIN - HEADER_H;
+  const TMT_PENS_Y = HEADER_Y - 2 - 50 - 5 * ROW_GAP;
 
   let SC_DRAW_W = 0;
   let SC_DRAW_H = 0;
-  let PW        = 842;
 
   if (scImg) {
-    SC_DRAW_W = Math.min(Math.max(scImg.width, 400), 700);
-    SC_DRAW_H = SC_DRAW_W / scRatio;
-    PW        = SC_DRAW_W + MARGIN * 2;
+    const maxW = PW - MARGIN * 2;
+    const maxH = TMT_PENS_Y - MARGIN - SC_GAP;
+    const scale = Math.min(maxW / scImg.width, maxH / scImg.height, 1);
+    SC_DRAW_W = scImg.width * scale;
+    SC_DRAW_H = scImg.height * scale;
   }
 
-  const PH = MARGIN + HEADER_H + 2 + BIO_H + (scImg ? SC_GAP + SC_DRAW_H : 0) + MARGIN;
   const page = pdfDoc.addPage([PW, PH]);
 
   // Background putih
   page.drawRectangle({ x: 0, y: 0, width: PW, height: PH, color: WHITE });
 
-  // Area header
-  const HEADER_Y = PH - MARGIN - HEADER_H;
+  // Area header (sudah dihitung di atas)
 
   // Garis oranye bawah header
   page.drawRectangle({ x: MARGIN, y: HEADER_Y, width: PW - MARGIN * 2, height: 2, color: ORANGE });
@@ -95,39 +99,41 @@ export async function buildCoverPage(
   const TX      = SEP_X + 18;
   const TITLE_Y = HEADER_Y + (HEADER_H / 2) + 10;
   page.drawText('LAPORAN KEGIATAN PENGOPERASIAN PRASARANA (IO)', {
-    x: TX, y: TITLE_Y, font: bold, size: 15, color: BLACK,
+    x: TX, y: TITLE_Y, font: bold, size: 12, color: BLACK,
   });
   page.drawText('PT Kereta Api Indonesia (Persero)', {
-    x: TX, y: TITLE_Y - 20, font: regular, size: 8.5, color: LGRAY,
+    x: TX, y: TITLE_Y - 18, font: regular, size: 8.5, color: LGRAY,
   });
 
   // BIODATA
-  const LX        = MARGIN + 20;
-  const CX        = LX + 110;
-  const VX        = CX + 13;
-  const NAMA_Y    = HEADER_Y - 2 - 42;
-  const NIPP_Y    = NAMA_Y    - ROW_GAP;
-  const JABATAN_Y = NIPP_Y    - ROW_GAP;
-  const PERIODE_Y = JABATAN_Y - ROW_GAP;
-  const STASIUN_Y = PERIODE_Y - ROW_GAP;
+  const LX          = MARGIN + 20;
+  const CX          = LX + 110;
+  const VX          = CX + 13;
+  const NAMA_Y      = HEADER_Y - 2 - 50;
+  const NIPP_Y      = NAMA_Y      - ROW_GAP;
+  const JABATAN_Y   = NIPP_Y      - ROW_GAP;
+  const PERIODE_Y   = JABATAN_Y   - ROW_GAP;
+  const TMT_JAB_Y   = PERIODE_Y   - ROW_GAP;
+  // TMT_PENS_Y sudah dideklarasikan di atas
 
   [
-    { label: 'NAMA',         value: nama,    y: NAMA_Y    },
-    { label: 'NIPP',         value: nipp,    y: NIPP_Y    },
-    { label: 'JABATAN',      value: jabatan, y: JABATAN_Y },
-    { label: 'PERIODE',      value: periode, y: PERIODE_Y },
-    { label: 'NAMA STASIUN', value: stasiun, y: STASIUN_Y },
+    { label: 'NAMA',        value: nama,       y: NAMA_Y      },
+    { label: 'NIPP',        value: nipp,       y: NIPP_Y      },
+    { label: 'JABATAN',     value: jabatan,    y: JABATAN_Y   },
+    { label: 'PERIODE',     value: periode,    y: PERIODE_Y   },
+    { label: 'TMT JABATAN', value: tmtJabatan, y: TMT_JAB_Y   },
+    { label: 'TMT PENSIUN', value: tmtPensiun, y: TMT_PENS_Y  },
   ].forEach(({ label, value, y }) => {
     page.drawText(label, { x: LX, y, font: bold,    size: 10, color: BLUE  });
     page.drawText(':',   { x: CX, y, font: bold,    size: 10, color: BLUE  });
     page.drawText(value, { x: VX, y, font: regular, size: 10, color: DGRAY });
   });
 
-  // GAMBAR SMARTCARD di bawah biodata
+  // GAMBAR SMARTCARD di bawah biodata (posisi tengah horizontal)
   if (scImg) {
     page.drawImage(scImg, {
-      x:      MARGIN,
-      y:      STASIUN_Y - SC_GAP - SC_DRAW_H,
+      x:      MARGIN + (PW - MARGIN * 2 - SC_DRAW_W) / 2,
+      y:      TMT_PENS_Y - SC_GAP - SC_DRAW_H,
       width:  SC_DRAW_W,
       height: SC_DRAW_H,
     });

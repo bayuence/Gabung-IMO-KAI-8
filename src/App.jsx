@@ -133,7 +133,8 @@ function App() {
       const nippUpper    = identity.nipp.trim().toUpperCase();
       const jabatanUpper = pegawaiData.jabatan.trim().toUpperCase();
       const periodeStr   = `${identity.bulan} ${identity.tahun}`;
-      const stasiunUpper = pegawaiData.stasiun.trim().toUpperCase();
+      const tmtJabatanStr = pegawaiData.tmtJabatan;
+      const tmtPensiunStr = pegawaiData.tmtPensiun;
 
       // 1. Halaman sampul
       setProgress('Membuat halaman sampul...');
@@ -142,22 +143,45 @@ function App() {
         const scBuf = await readFileAsArrayBuffer(files.smartcard);
         smartcardImageBytes = new Uint8Array(scBuf);
       }
-      await buildCoverPage(mergedPdf, namaUpper, nippUpper, logoUrl, jabatanUpper, periodeStr, stasiunUpper, smartcardImageBytes);
+      await buildCoverPage(mergedPdf, namaUpper, nippUpper, logoUrl, jabatanUpper, periodeStr, tmtJabatanStr, tmtPensiunStr, smartcardImageBytes);
 
       // 2. Proses tiap dokumen
       const dokList = [
-        { file: files.smartcard,              label: 'Smartcard Dinas' },
         { file: files.hadir,                  label: 'Daftar Hadir' },
         { file: files.serahTerimaDokumentasi, label: 'Serah Terima & Dokumentasi' },
       ];
+
+      // Jika smartcard berupa PDF, tidak bisa ditempel di cover page, jadi tambahkan sebagai halaman terpisah.
+      // Namun jika berupa gambar, sudah ada di cover page jadi tidak perlu diduplikasi.
+      if (files.smartcard && files.smartcard.type === 'application/pdf') {
+        dokList.unshift({ file: files.smartcard, label: 'Smartcard Dinas' });
+      }
 
       for (const { file, label } of dokList) {
         setProgress(`Memproses: ${label}...`);
         if (file.type === 'application/pdf') {
           const buf      = await readFileAsArrayBuffer(file);
           const donorPdf = await PDFDocument.load(buf);
-          const pages    = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
-          pages.forEach((p) => mergedPdf.addPage(p));
+          
+          // Force all PDF pages to A4 Portrait
+          const embeddedPages = await mergedPdf.embedPages(donorPdf.getPages());
+          for (const embPage of embeddedPages) {
+            const A4W = 595;
+            const A4H = 842;
+            const page = mergedPdf.addPage([A4W, A4H]);
+            
+            // Kalkulasi skala agar fit ke A4
+            const ratio = Math.min(A4W / embPage.width, A4H / embPage.height);
+            const drawW = embPage.width * ratio;
+            const drawH = embPage.height * ratio;
+
+            page.drawPage(embPage, {
+              x: (A4W - drawW) / 2,
+              y: (A4H - drawH) / 2,
+              width: drawW,
+              height: drawH,
+            });
+          }
         } else {
           await imageToPdfPage(mergedPdf, file);
         }
@@ -167,8 +191,9 @@ function App() {
       setProgress('Menyimpan PDF...');
       const pdfBytes = await mergedPdf.save();
       const blob     = new Blob([pdfBytes], { type: 'application/pdf' });
-      const sanitize = (str) => str.trim().replace(/[<>:"/\\|?*]/g, '');
-      const filename = `${sanitize(namaUpper)} ${sanitize(nippUpper)} ${sanitize(jabatanUpper)} ${sanitize(identity.bulan)} ${sanitize(identity.tahun)} ${sanitize(stasiunUpper)}.pdf`;
+      const sanitize = (str) => (str || '').toString().trim().replace(/[<>:"/\\|?*]/g, '');
+      const rawFilename = `${sanitize(namaUpper)} ${sanitize(nippUpper)} ${sanitize(jabatanUpper)} ${sanitize(identity.bulan)} ${sanitize(identity.tahun)} ${sanitize(pegawaiData.stasiun)}`;
+      const filename = `${rawFilename.replace(/\s+/g, ' ')}.pdf`;
 
       setSavedBlob({ blob, filename });
       downloadBlob(blob, filename);
