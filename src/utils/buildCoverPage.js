@@ -1,46 +1,74 @@
-import { rgb, StandardFonts } from 'pdf-lib';
+﻿import { rgb, StandardFonts } from 'pdf-lib';
 
 /**
- * Halaman sampul Laporan IO — A4 Landscape
- * Layout header: logo KAI (kiri) | garis oranye vertikal | judul 1 baris (kanan)
+ * Halaman sampul Laporan IO
+ * Layout: KOP (logo + judul) → BIODATA → GAMBAR SMARTCARD
+ * Ukuran halaman menyesuaikan gambar smartcard yang diunggah.
+ * Jika tidak ada gambar, default A4 Landscape.
  */
-export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl, jabatan = '', periode = '', stasiun = '') {
-  const PW = 842;
-  const PH = 595;
-  const page = pdfDoc.addPage([PW, PH]);
-
+export async function buildCoverPage(
+  pdfDoc, nama, nipp, logoUrl,
+  jabatan = '', periode = '', stasiun = '',
+  smartcardImageBytes = null,
+) {
   const bold    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const BLUE   = rgb(0.137, 0.169, 0.365); // #232b5d
-  const ORANGE = rgb(0.949, 0.396, 0.133); // #f26522
+  const BLUE   = rgb(0.137, 0.169, 0.365);
+  const ORANGE = rgb(0.949, 0.396, 0.133);
   const BLACK  = rgb(0,    0,    0);
   const WHITE  = rgb(1,    1,    1);
   const DGRAY  = rgb(0.2,  0.2,  0.2);
-  const NGRAY  = rgb(0.35, 0.35, 0.35);
   const LGRAY  = rgb(0.6,  0.6,  0.6);
 
-  // ── Background putih ──────────────────────────────────────────────────────
+  // Embed gambar smartcard lebih dulu untuk tahu dimensinya
+  let scImg   = null;
+  let scRatio = 1;
+  if (smartcardImageBytes) {
+    try {
+      try { scImg = await pdfDoc.embedPng(smartcardImageBytes); }
+      catch { scImg = await pdfDoc.embedJpg(smartcardImageBytes); }
+      scRatio = scImg.width / scImg.height;
+    } catch (e) {
+      console.warn('Gagal embed smartcard:', e);
+      scImg = null;
+    }
+  }
+
+  // Ukuran halaman
+  const MARGIN   = 15;
+  const HEADER_H = 100;
+  const ROW_GAP  = 26;
+  const BIO_H    = 42 + 4 * ROW_GAP + 20;
+  const SC_GAP   = 12;
+
+  let SC_DRAW_W = 0;
+  let SC_DRAW_H = 0;
+  let PW        = 842;
+
+  if (scImg) {
+    SC_DRAW_W = Math.min(Math.max(scImg.width, 400), 700);
+    SC_DRAW_H = SC_DRAW_W / scRatio;
+    PW        = SC_DRAW_W + MARGIN * 2;
+  }
+
+  const PH = MARGIN + HEADER_H + 2 + BIO_H + (scImg ? SC_GAP + SC_DRAW_H : 0) + MARGIN;
+  const page = pdfDoc.addPage([PW, PH]);
+
+  // Background putih
   page.drawRectangle({ x: 0, y: 0, width: PW, height: PH, color: WHITE });
 
-  // ── Border luar biru ──────────────────────────────────────────────────────
-  page.drawRectangle({
-    x: 15, y: 15, width: PW - 30, height: PH - 30,
-    borderColor: BLUE, borderWidth: 1.5, color: WHITE,
-  });
+  // Area header
+  const HEADER_Y = PH - MARGIN - HEADER_H;
 
-  // ── Tinggi area header: 100pt ─────────────────────────────────────────────
-  const HEADER_H  = 100;
-  const HEADER_Y  = PH - 15 - HEADER_H;
-  // Garis oranye bawah header (tebal 2pt)
-  page.drawRectangle({ x: 15, y: HEADER_Y, width: PW - 30, height: 2, color: ORANGE });
+  // Garis oranye bawah header
+  page.drawRectangle({ x: MARGIN, y: HEADER_Y, width: PW - MARGIN * 2, height: 2, color: ORANGE });
 
-  // ── Logo KAI di kiri (center vertikal di area header) ────────────────────
-  const LOGO_X     = 30;
+  // Logo KAI
+  const LOGO_X     = MARGIN + 15;
   const LOGO_Y     = HEADER_Y + 8;
   const LOGO_MAX_W = 130;
   const LOGO_MAX_H = HEADER_H - 16;
-
   try {
     const resp  = await fetch(logoUrl);
     const buf   = await resp.arrayBuffer();
@@ -50,87 +78,58 @@ export async function buildCoverPage(pdfDoc, nama, nipp, logoUrl, jabatan = '', 
     catch { img = await pdfDoc.embedJpg(bytes); }
     const { width: lw, height: lh } = img;
     const ratio = Math.min(LOGO_MAX_W / lw, LOGO_MAX_H / lh);
-    const lW = lw * ratio;
-    const lH = lh * ratio;
     page.drawImage(img, {
-      x: LOGO_X + (LOGO_MAX_W - lW) / 2,
-      y: LOGO_Y + (LOGO_MAX_H - lH) / 2,
-      width: lW,
-      height: lH,
+      x: LOGO_X + (LOGO_MAX_W - lw * ratio) / 2,
+      y: LOGO_Y + (LOGO_MAX_H - lh * ratio) / 2,
+      width: lw * ratio, height: lh * ratio,
     });
   } catch {
-    page.drawText('KAI', {
-      x: LOGO_X + 20, y: LOGO_Y + 30,
-      font: bold, size: 32, color: BLUE,
-    });
+    page.drawText('KAI', { x: LOGO_X + 20, y: LOGO_Y + 30, font: bold, size: 32, color: BLUE });
   }
 
-  // ── Garis vertikal oranye pemisah logo | judul ────────────────────────────
+  // Garis vertikal oranye
   const SEP_X = LOGO_X + LOGO_MAX_W + 12;
-  page.drawRectangle({
-    x: SEP_X, y: HEADER_Y + 10,
-    width: 1.5, height: HEADER_H - 20,
-    color: ORANGE,
-  });
+  page.drawRectangle({ x: SEP_X, y: HEADER_Y + 10, width: 1.5, height: HEADER_H - 20, color: ORANGE });
 
-  // ── Judul: SATU baris penuh, warna hitam ─────────────────────────────────
-  const TX         = SEP_X + 18;
-  const TITLE_TEXT = 'LAPORAN KEGIATAN PENGOPERASIAN PRASARANA (IO)';
-  const TITLE_SIZE = 15;
-  const TITLE_Y    = HEADER_Y + (HEADER_H / 2) + 10;
-  const SUB_Y      = TITLE_Y - 20;
-
-  page.drawText(TITLE_TEXT, {
-    x: TX, y: TITLE_Y,
-    font: bold, size: TITLE_SIZE, color: BLACK,
+  // Judul
+  const TX      = SEP_X + 18;
+  const TITLE_Y = HEADER_Y + (HEADER_H / 2) + 10;
+  page.drawText('LAPORAN KEGIATAN PENGOPERASIAN PRASARANA (IO)', {
+    x: TX, y: TITLE_Y, font: bold, size: 15, color: BLACK,
   });
   page.drawText('PT Kereta Api Indonesia (Persero)', {
-    x: TX, y: SUB_Y,
-    font: regular, size: 8.5, color: LGRAY,
+    x: TX, y: TITLE_Y - 20, font: regular, size: 8.5, color: LGRAY,
   });
 
-  // ── Identitas ─────────────────────────────────────────────────────────────
-  const LX      = 35;   // label x
-  const CX      = 145;  // colon x  (diperlebar agar jabatan & stasiun muat)
-  const VX      = 158;  // value x
-  const ROW_GAP = 26;
+  // BIODATA
+  const LX        = MARGIN + 20;
+  const CX        = LX + 110;
+  const VX        = CX + 13;
+  const NAMA_Y    = HEADER_Y - 2 - 42;
+  const NIPP_Y    = NAMA_Y    - ROW_GAP;
+  const JABATAN_Y = NIPP_Y    - ROW_GAP;
+  const PERIODE_Y = JABATAN_Y - ROW_GAP;
+  const STASIUN_Y = PERIODE_Y - ROW_GAP;
 
-  const NAMA_Y     = HEADER_Y - 42;
-  const NIPP_Y     = NAMA_Y    - ROW_GAP;
-  const JABATAN_Y  = NIPP_Y    - ROW_GAP;
-  const PERIODE_Y  = JABATAN_Y - ROW_GAP;
-  const STASIUN_Y  = PERIODE_Y - ROW_GAP;
-
-  const rows = [
-    { label: 'NAMA',          value: nama,    y: NAMA_Y    },
-    { label: 'NIPP',          value: nipp,    y: NIPP_Y    },
-    { label: 'JABATAN',       value: jabatan, y: JABATAN_Y },
-    { label: 'PERIODE',       value: periode, y: PERIODE_Y },
-    { label: 'NAMA STASIUN',  value: stasiun, y: STASIUN_Y },
-  ];
-
-  rows.forEach(({ label, value, y }) => {
+  [
+    { label: 'NAMA',         value: nama,    y: NAMA_Y    },
+    { label: 'NIPP',         value: nipp,    y: NIPP_Y    },
+    { label: 'JABATAN',      value: jabatan, y: JABATAN_Y },
+    { label: 'PERIODE',      value: periode, y: PERIODE_Y },
+    { label: 'NAMA STASIUN', value: stasiun, y: STASIUN_Y },
+  ].forEach(({ label, value, y }) => {
     page.drawText(label, { x: LX, y, font: bold,    size: 10, color: BLUE  });
     page.drawText(':',   { x: CX, y, font: bold,    size: 10, color: BLUE  });
     page.drawText(value, { x: VX, y, font: regular, size: 10, color: DGRAY });
   });
 
-  // ── PERHATIAN (pojok kiri bawah, font mikro) ──────────────────────────────
-  const N_SIZE = 5.5;
-  const notes  = [
-    'PERHATIAN !!!',
-    '* Foto Dokumentasi yang dilampirkan adalah pada saat melaksanakan tugas sesuai tupoksi masing-masing dan bukan foto selfie.',
-    '* Foto Dokumentasi cukup satu (tidak perlu banyak atau dikolase) dan harus dilengkapi Timestamp yang bisa dibaca dengan Jelas.',
-    '* Foto Serah Terima harus sesuai dengan tanggal dokumentasinya dan bisa dibaca dengan Jelas.',
-  ];
-  notes.forEach((line, i) => {
-    page.drawText(line, {
-      x: 18,
-      y: 50 - i * (N_SIZE + 2.5),
-      font:  i === 0 ? bold    : regular,
-      size:  N_SIZE,
-      color: i === 0 ? ORANGE  : NGRAY,
+  // GAMBAR SMARTCARD di bawah biodata
+  if (scImg) {
+    page.drawImage(scImg, {
+      x:      MARGIN,
+      y:      STASIUN_Y - SC_GAP - SC_DRAW_H,
+      width:  SC_DRAW_W,
+      height: SC_DRAW_H,
     });
-  });
+  }
 }
-

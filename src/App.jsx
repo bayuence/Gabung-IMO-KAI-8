@@ -1,58 +1,63 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import {
   X, CheckCircle2, Upload, Loader2, User, FilePlus2,
   CreditCard, ClipboardCheck, FolderOpen, FolderDown,
-  AlertCircle, Download, RefreshCw,
+  AlertCircle, Download, RefreshCw, Search, BadgeCheck,
 } from 'lucide-react';
 
 import DropZone from './components/DropZone';
 import { readFileAsArrayBuffer, imageToPdfPage, downloadBlob } from './utils/pdfHelpers';
 import { buildCoverPage } from './utils/buildCoverPage';
+import { fetchPegawaiByNipp } from './utils/fetchPegawai';
 import './App.css';
 
 // =============================================
 //  KOMPONEN UTAMA: App
 // =============================================
 function App() {
-  const [step,          setStep]          = useState('form'); // 'form' | 'success' | 'error'
-  const [loading,       setLoading]       = useState(false);
-  const [progress,      setProgress]      = useState('');
-  const [errorMsg,      setErrorMsg]      = useState('');
-  const [savedBlob,     setSavedBlob]     = useState(null);
-  const [submittedName, setSubmittedName] = useState('');
+  const [step,             setStep]             = useState('form'); // 'form' | 'success' | 'error'
+  const [loading,          setLoading]          = useState(false);
+  const [progress,         setProgress]         = useState('');
+  const [errorMsg,         setErrorMsg]         = useState('');
+  const [savedBlob,        setSavedBlob]        = useState(null);
+  const [submittedName,    setSubmittedName]    = useState('');
   const [downloadFilename, setDownloadFilename] = useState('');
 
-  // Konstanta pilihan dropdown
-  const JABATAN_OPTIONS = ['DALOPKA', 'PPKP', 'PPKA', 'PAP', 'PLR', 'PRS', 'PJL'];
-  const BULAN_OPTIONS   = [
+  // State NIPP lookup
+  const [nippLoading,  setNippLoading]  = useState(false);
+  const [nippFound,    setNippFound]    = useState(false);   // true jika data sudah ditemukan
+  const [nippError,    setNippError]    = useState('');
+
+  // Data yang di-fetch dari spreadsheet
+  const [pegawaiData, setPegawaiData] = useState(null);
+  // { nama, jabatan, stasiun }
+
+  const BULAN_OPTIONS = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
-  const STASIUN_OPTIONS = [
-    'BABAT', 'BANGIL', 'BENOWO', 'BENTENG', 'BLIMBING',
-    'BOHARAN', 'BOJONEGORO', 'BOWERNO', 'CERME', 'DUDUK',
-    'GEDANGAN', 'GEMBONG', 'INDRO', 'KALIMAS', 'KALITIDU',
-    'KANDANGAN', 'KAPAS', 'KEDINDING', 'KEPANJEN', 'KESAMBEN',
-    'KRIAN', 'LAMONGAN', 'LAWANG', 'MALANG', 'MALANGKOTALAMA',
-    'MOJOKERTO', 'NGEBRUK', 'PAKISAJI', 'POGAJIH', 'PORONG',
-    'PUCUK', 'SEPANJANG', 'SENGON', 'SIDOARJO', 'SIDOTOPO',
-    'SINGOSARI', 'SUKOREJO', 'SURABAYA PASARTURI', 'SURABAYAGUBENG', 'SURABAYAKOTA',
-    'SURABAYAN', 'SUMBERREJO', 'SUMBERPUCUNG', 'TANDES', 'TANGGULANGIN',
-    'TARIK', 'TOBO', 'TULANGAN', 'WARU', 'WLINGI',
-    'WONOKERTO', 'WONOKROMO',
-  ];
 
-  const [identity,       setIdentity]       = useState({ nama: '', nipp: '', jabatan: '', bulan: '', tahun: '', stasiun: '' });
+  const CURRENT_YEAR = new Date().getFullYear();
+  const [identity,       setIdentity]       = useState({ nipp: '', bulan: '', tahun: '' });
   const [identityErrors, setIdentityErrors] = useState({});
 
   const [files,      setFiles]      = useState({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
   const [fileErrors, setFileErrors] = useState({});
 
+  const nippInputRef = useRef(null);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleIdentityChange = (field, value) => {
     setIdentity((prev) => ({ ...prev, [field]: value }));
     if (value.trim()) setIdentityErrors((prev) => ({ ...prev, [field]: null }));
+
+    // Jika NIPP diubah, reset data pegawai
+    if (field === 'nipp') {
+      setNippFound(false);
+      setPegawaiData(null);
+      setNippError('');
+    }
   };
 
   const handleFileChange = (key, file) => {
@@ -60,19 +65,51 @@ function App() {
     if (file) setFileErrors((prev) => ({ ...prev, [key]: null }));
   };
 
+  // ── Lookup NIPP ke Spreadsheet ─────────────────────────────────────────
+  const handleNippLookup = async () => {
+    const nipp = identity.nipp.trim();
+    if (!nipp) {
+      setNippError('NIPP wajib diisi terlebih dahulu.');
+      return;
+    }
+    setNippLoading(true);
+    setNippError('');
+    setNippFound(false);
+    setPegawaiData(null);
+
+    try {
+      const data = await fetchPegawaiByNipp(nipp);
+      setPegawaiData(data);
+      setNippFound(true);
+      setIdentityErrors((prev) => ({ ...prev, nipp: null }));
+    } catch (err) {
+      setNippError(err.message || 'NIPP tidak ditemukan.');
+      setNippFound(false);
+    } finally {
+      setNippLoading(false);
+    }
+  };
+
+  // Lookup saat tekan Enter di field NIPP
+  const handleNippKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleNippLookup(); }
+  };
+
+  // ── Validasi ─────────────────────────────────────────────────────────────
   const validate = () => {
     const iErrors = {};
     const fErrors = {};
-    if (!identity.nama.trim())    iErrors.nama    = 'Nama wajib diisi.';
-    if (!identity.nipp.trim())    iErrors.nipp    = 'NIPP wajib diisi.';
-    if (!identity.jabatan)        iErrors.jabatan = 'Jabatan wajib dipilih.';
-    if (!identity.bulan)          iErrors.bulan   = 'Bulan wajib dipilih.';
-    if (!identity.tahun)                              iErrors.tahun   = 'Tahun wajib diisi.';
+
+    if (!identity.nipp.trim())  iErrors.nipp  = 'NIPP wajib diisi.';
+    if (!nippFound)              iErrors.nipp  = 'Cari NIPP terlebih dahulu dan pastikan data ditemukan.';
+    if (!identity.bulan)         iErrors.bulan = 'Bulan wajib dipilih.';
+    if (!identity.tahun)                                iErrors.tahun = 'Tahun wajib diisi.';
     else if (!/^\d{4}$/.test(identity.tahun.toString())) iErrors.tahun = 'Tahun harus 4 digit angka.';
-    if (!identity.stasiun)        iErrors.stasiun = 'Nama stasiun wajib dipilih.';
+
     if (!files.smartcard)              fErrors.smartcard              = 'Smartcard wajib diunggah.';
     if (!files.hadir)                  fErrors.hadir                  = 'Daftar hadir wajib diunggah.';
     if (!files.serahTerimaDokumentasi) fErrors.serahTerimaDokumentasi = 'Serah Terima & Dokumentasi wajib diunggah.';
+
     setIdentityErrors(iErrors);
     setFileErrors(fErrors);
     return Object.keys(iErrors).length === 0 && Object.keys(fErrors).length === 0;
@@ -91,15 +128,21 @@ function App() {
     try {
       const mergedPdf = await PDFDocument.create();
       const logoUrl   = window.location.origin + '/logo-kai.png';
-      const namaUpper    = identity.nama.trim().toUpperCase();
+
+      const namaUpper    = pegawaiData.nama.trim().toUpperCase();
       const nippUpper    = identity.nipp.trim().toUpperCase();
-      const jabatanUpper = identity.jabatan.toUpperCase();
+      const jabatanUpper = pegawaiData.jabatan.trim().toUpperCase();
       const periodeStr   = `${identity.bulan} ${identity.tahun}`;
-      const stasiunUpper = identity.stasiun.toUpperCase();
+      const stasiunUpper = pegawaiData.stasiun.trim().toUpperCase();
 
       // 1. Halaman sampul
       setProgress('Membuat halaman sampul...');
-      await buildCoverPage(mergedPdf, namaUpper, nippUpper, logoUrl, jabatanUpper, periodeStr, stasiunUpper);
+      let smartcardImageBytes = null;
+      if (files.smartcard && files.smartcard.type !== 'application/pdf') {
+        const scBuf = await readFileAsArrayBuffer(files.smartcard);
+        smartcardImageBytes = new Uint8Array(scBuf);
+      }
+      await buildCoverPage(mergedPdf, namaUpper, nippUpper, logoUrl, jabatanUpper, periodeStr, stasiunUpper, smartcardImageBytes);
 
       // 2. Proses tiap dokumen
       const dokList = [
@@ -152,7 +195,7 @@ function App() {
 
   const handleReset = () => {
     setStep('form');
-    setIdentity({ nama: '', nipp: '', jabatan: '', bulan: '', tahun: '', stasiun: '' });
+    setIdentity({ nipp: '', bulan: '', tahun: '' });
     setIdentityErrors({});
     setFiles({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
     setFileErrors({});
@@ -160,6 +203,9 @@ function App() {
     setDownloadFilename('');
     setErrorMsg('');
     setSavedBlob(null);
+    setNippFound(false);
+    setPegawaiData(null);
+    setNippError('');
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -191,59 +237,70 @@ function App() {
                   <User size={18} />
                   <span>Identitas Pegawai</span>
                 </div>
-                <p className="section-desc">Isi data identitas Anda dengan benar.</p>
+                <p className="section-desc">Masukkan NIPP Anda, data akan diambil otomatis dari sistem.</p>
 
-                {/* Nama & NIPP */}
-                <div className="identity-row">
-                  <div className="field-group">
-                    <label htmlFor="inputNama" className="field-label">Nama Lengkap</label>
-                    <input
-                      id="inputNama"
-                      type="text"
-                      className={`field-input ${identityErrors.nama ? 'has-error' : ''}`}
-                      placeholder="Nama lengkap..."
-                      value={identity.nama}
-                      onChange={(e) => handleIdentityChange('nama', e.target.value)}
-                      autoComplete="off"
-                    />
-                    {identityErrors.nama && <p className="field-error">{identityErrors.nama}</p>}
-                  </div>
-
-                  <div className="field-group">
-                    <label htmlFor="inputNipp" className="field-label">NIPP</label>
+                {/* NIPP + tombol Cari */}
+                <div className="field-group">
+                  <label htmlFor="inputNipp" className="field-label">NIPP</label>
+                  <div className="nipp-row">
                     <input
                       id="inputNipp"
+                      ref={nippInputRef}
                       type="text"
                       inputMode="numeric"
-                      className={`field-input ${identityErrors.nipp ? 'has-error' : ''}`}
-                      placeholder="NIPP..."
+                      className={`field-input ${identityErrors.nipp ? 'has-error' : nippFound ? 'has-success' : ''}`}
+                      placeholder="Masukkan NIPP..."
                       value={identity.nipp}
                       onChange={(e) => handleIdentityChange('nipp', e.target.value)}
+                      onKeyDown={handleNippKeyDown}
                       autoComplete="off"
                     />
-                    {identityErrors.nipp && <p className="field-error">{identityErrors.nipp}</p>}
+                    <button
+                      type="button"
+                      id="btnCariNipp"
+                      className={`btn-lookup ${nippLoading ? 'loading' : ''}`}
+                      onClick={handleNippLookup}
+                      disabled={nippLoading}
+                    >
+                      {nippLoading
+                        ? <Loader2 size={15} className="spinning" />
+                        : <Search size={15} />
+                      }
+                      <span>{nippLoading ? 'Mencari...' : 'Cari'}</span>
+                    </button>
                   </div>
+                  {identityErrors.nipp && <p className="field-error">{identityErrors.nipp}</p>}
+                  {nippError && !nippFound && <p className="field-error nipp-not-found">{nippError}</p>}
                 </div>
 
-                {/* Jabatan */}
-                <div className="field-group">
-                  <label htmlFor="selectJabatan" className="field-label">Jabatan</label>
-                  <select
-                    id="selectJabatan"
-                    className={`field-input field-select ${identityErrors.jabatan ? 'has-error' : ''}`}
-                    value={identity.jabatan}
-                    onChange={(e) => handleIdentityChange('jabatan', e.target.value)}
-                  >
-                    <option value="">-- Pilih Jabatan --</option>
-                    {JABATAN_OPTIONS.map((j) => (
-                      <option key={j} value={j}>{j}</option>
-                    ))}
-                  </select>
-                  {identityErrors.jabatan && <p className="field-error">{identityErrors.jabatan}</p>}
-                </div>
+                {/* Card data pegawai yang ditemukan */}
+                {nippFound && pegawaiData && (
+                  <div className="pegawai-card fade-in">
+                    <div className="pegawai-card-header">
+                      <BadgeCheck size={15} />
+                      <span>Data Ditemukan</span>
+                    </div>
+                    <div className="pegawai-card-body">
+                      <div className="pegawai-row">
+                        <span className="pegawai-key">Nama</span>
+                        <span className="pegawai-val">{pegawaiData.nama}</span>
+                      </div>
+                      <div className="pegawai-row">
+                        <span className="pegawai-key">Jabatan</span>
+                        <span className="pegawai-val">{pegawaiData.jabatan}</span>
+                      </div>
+                      {pegawaiData.stasiun && (
+                        <div className="pegawai-row">
+                          <span className="pegawai-key">Stasiun</span>
+                          <span className="pegawai-val">{pegawaiData.stasiun}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Bulan & Tahun */}
-                <div className="identity-row">
+                <div className="identity-row" style={{ marginTop: nippFound ? '12px' : '0' }}>
                   <div className="field-group">
                     <label htmlFor="selectBulan" className="field-label">Bulan</label>
                     <select
@@ -267,7 +324,7 @@ function App() {
                       type="number"
                       inputMode="numeric"
                       className={`field-input ${identityErrors.tahun ? 'has-error' : ''}`}
-                      placeholder="Contoh: 2025"
+                      placeholder={`Contoh: ${CURRENT_YEAR}`}
                       value={identity.tahun}
                       onChange={(e) => handleIdentityChange('tahun', e.target.value)}
                       autoComplete="off"
@@ -275,23 +332,6 @@ function App() {
                     />
                     {identityErrors.tahun && <p className="field-error">{identityErrors.tahun}</p>}
                   </div>
-                </div>
-
-                {/* Nama Stasiun */}
-                <div className="field-group">
-                  <label htmlFor="selectStasiun" className="field-label">Nama Stasiun</label>
-                  <select
-                    id="selectStasiun"
-                    className={`field-input field-select ${identityErrors.stasiun ? 'has-error' : ''}`}
-                    value={identity.stasiun}
-                    onChange={(e) => handleIdentityChange('stasiun', e.target.value)}
-                  >
-                    <option value="">-- Pilih Stasiun --</option>
-                    {STASIUN_OPTIONS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                  {identityErrors.stasiun && <p className="field-error">{identityErrors.stasiun}</p>}
                 </div>
 
               </div>
@@ -357,7 +397,6 @@ function App() {
                 </div>
                 <span className="wa-banner-arrow">›</span>
               </a>
-
 
             </form>
           </div>

@@ -155,9 +155,113 @@
   background: rgba(239, 68, 68, 0.03);
 }
 
+.field-input.has-success {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
 .field-input::placeholder {
   color: #c1c9d6;
   font-weight: 400;
+}
+
+/* ============================================
+   NIPP ROW (input + tombol Cari)
+   ============================================ */
+.nipp-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.nipp-row .field-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-lookup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  background: var(--kai-blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-lookup:hover:not(:disabled) {
+  background: #1e2a5e;
+  box-shadow: 0 4px 12px rgba(23, 37, 84, 0.25);
+}
+
+.btn-lookup:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.nipp-not-found {
+  color: var(--error);
+}
+
+/* ============================================
+   PEGAWAI CARD (data hasil lookup)
+   ============================================ */
+.pegawai-card {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  margin-top: 4px;
+}
+
+.pegawai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.pegawai-card-header svg {
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.pegawai-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pegawai-row {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.pegawai-key {
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.pegawai-val {
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-word;
 }
 
 /* ============================================
