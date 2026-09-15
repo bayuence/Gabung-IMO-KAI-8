@@ -61,7 +61,13 @@ async function fetchViaAppsScript(nipp) {
   if (!json.found) {
     throw new Error(json.error || `NIPP "${nipp}" tidak ditemukan di data personil.`);
   }
-  return { nama: json.nama, jabatan: json.jabatan, stasiun: json.stasiun };
+  return {
+    nama:        json.nama,
+    jabatan:     json.jabatan,
+    stasiun:     json.stasiun,
+    tmtJabatan:  json.tmtJabatan  || '-',
+    tmtPensiun:  json.tmtPensiun  || '-',
+  };
 }
 
 // ── Mode 2: CSV Export (fallback) ────────────────────────────────────────────

@@ -289,12 +289,16 @@ function App() {
                         <span className="pegawai-key">Jabatan</span>
                         <span className="pegawai-val">{pegawaiData.jabatan}</span>
                       </div>
-                      {pegawaiData.stasiun && (
-                        <div className="pegawai-row">
-                          <span className="pegawai-key">Stasiun</span>
-                          <span className="pegawai-val">{pegawaiData.stasiun}</span>
+                      <div className="pegawai-tmt-row">
+                        <div className="pegawai-tmt-col">
+                          <span className="pegawai-tmt-label">TMT Jabatan</span>
+                          <span className="pegawai-tmt-val">{pegawaiData.tmtJabatan}</span>
                         </div>
-                      )}
+                        <div className="pegawai-tmt-col">
+                          <span className="pegawai-tmt-label">TMT Pensiun</span>
+                          <span className="pegawai-tmt-val">{pegawaiData.tmtPensiun}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

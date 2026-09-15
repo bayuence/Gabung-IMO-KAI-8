@@ -264,6 +264,36 @@
   word-break: break-word;
 }
 
+/* 2-column TMT row */
+.pegawai-tmt-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #bbf7d0;
+}
+
+.pegawai-tmt-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pegawai-tmt-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #15803d;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.pegawai-tmt-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* ============================================
    FIELD SELECT (Dropdown)
    ============================================ */
