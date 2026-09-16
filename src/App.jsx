@@ -3,10 +3,10 @@ import { PDFDocument } from 'pdf-lib';
 import {
   X, CheckCircle2, Upload, Loader2, User, FilePlus2,
   CreditCard, ClipboardCheck, FolderOpen, FolderDown,
-  AlertCircle, Download, RefreshCw, Search, BadgeCheck,
+  AlertCircle, Download, RefreshCw, Search, BadgeCheck, Files,
 } from 'lucide-react';
-
 import DropZone from './components/DropZone';
+import MultiDropZone from './components/MultiDropZone';
 import { readFileAsArrayBuffer, imageToPdfPage, downloadBlob } from './utils/pdfHelpers';
 import { buildCoverPage } from './utils/buildCoverPage';
 import { fetchPegawaiByNipp } from './utils/fetchPegawai';
@@ -42,7 +42,7 @@ function App() {
   const [identity, setIdentity] = useState({ nipp: '', bulan: '', tahun: String(CURRENT_YEAR) });
   const [identityErrors, setIdentityErrors] = useState({});
 
-  const [files, setFiles] = useState({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
+  const [files, setFiles] = useState({ smartcard: null, hadir: null, serahTerimaDokumentasi: null, dokumenTambahan: [] });
   const [fileErrors, setFileErrors] = useState({});
 
   const nippInputRef = useRef(null);
@@ -60,9 +60,11 @@ function App() {
     }
   };
 
-  const handleFileChange = (key, file) => {
-    setFiles((prev) => ({ ...prev, [key]: file }));
-    if (file) setFileErrors((prev) => ({ ...prev, [key]: null }));
+  const handleFileChange = (key, fileOrFiles) => {
+    setFiles((prev) => ({ ...prev, [key]: fileOrFiles }));
+    if (fileOrFiles && (!Array.isArray(fileOrFiles) || fileOrFiles.length > 0)) {
+      setFileErrors((prev) => ({ ...prev, [key]: null }));
+    }
   };
 
   // ── Lookup NIPP ke Spreadsheet ─────────────────────────────────────────
@@ -151,6 +153,12 @@ function App() {
         { file: files.serahTerimaDokumentasi, label: 'Serah Terima & Dokumentasi' },
       ];
 
+      if (files.dokumenTambahan && files.dokumenTambahan.length > 0) {
+        files.dokumenTambahan.forEach((file, index) => {
+          dokList.push({ file, label: `Dokumen Tambahan ${index + 1}` });
+        });
+      }
+
       // Jika smartcard berupa PDF, tidak bisa ditempel di cover page, jadi tambahkan sebagai halaman terpisah.
       // Namun jika berupa gambar, sudah ada di cover page jadi tidak perlu diduplikasi.
       if (files.smartcard && files.smartcard.type === 'application/pdf') {
@@ -222,7 +230,7 @@ function App() {
     setStep('form');
     setIdentity({ nipp: '', bulan: '', tahun: String(CURRENT_YEAR) });
     setIdentityErrors({});
-    setFiles({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
+    setFiles({ smartcard: null, hadir: null, serahTerimaDokumentasi: null, dokumenTambahan: [] });
     setFileErrors({});
     setSubmittedName('');
     setDownloadFilename('');
@@ -394,6 +402,14 @@ function App() {
                     onFileChange={(f) => handleFileChange('serahTerimaDokumentasi', f)}
                     error={fileErrors.serahTerimaDokumentasi}
                   />
+                  <MultiDropZone
+                    id="fileDokumenTambahan"
+                    label="Dokumen Tambahan"
+                    docIcon={<Files size={15} />}
+                    files={files.dokumenTambahan}
+                    onFilesChange={(fs) => handleFileChange('dokumenTambahan', fs)}
+                    error={fileErrors.dokumenTambahan}
+                  />
                 </div>
               </div>
 
@@ -445,6 +461,9 @@ function App() {
               <span className="result-doc-item"><CreditCard size={12} /> Smartcard</span>
               <span className="result-doc-item"><ClipboardCheck size={12} /> Daftar Hadir</span>
               <span className="result-doc-item"><FolderOpen size={12} /> Serah Terima &amp; Dokumentasi</span>
+              {files.dokumenTambahan && files.dokumenTambahan.length > 0 && (
+                <span className="result-doc-item"><Files size={12} /> Dokumen Tambahan ({files.dokumenTambahan.length})</span>
+              )}
             </div>
             <div className="result-actions">
               <button className="btn-secondary" onClick={handleRedownload}>
