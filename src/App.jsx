@@ -16,18 +16,18 @@ import './App.css';
 //  KOMPONEN UTAMA: App
 // =============================================
 function App() {
-  const [step,             setStep]             = useState('form'); // 'form' | 'success' | 'error'
-  const [loading,          setLoading]          = useState(false);
-  const [progress,         setProgress]         = useState('');
-  const [errorMsg,         setErrorMsg]         = useState('');
-  const [savedBlob,        setSavedBlob]        = useState(null);
-  const [submittedName,    setSubmittedName]    = useState('');
+  const [step, setStep] = useState('form'); // 'form' | 'success' | 'error'
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [savedBlob, setSavedBlob] = useState(null);
+  const [submittedName, setSubmittedName] = useState('');
   const [downloadFilename, setDownloadFilename] = useState('');
 
   // State NIPP lookup
-  const [nippLoading,  setNippLoading]  = useState(false);
-  const [nippFound,    setNippFound]    = useState(false);   // true jika data sudah ditemukan
-  const [nippError,    setNippError]    = useState('');
+  const [nippLoading, setNippLoading] = useState(false);
+  const [nippFound, setNippFound] = useState(false);   // true jika data sudah ditemukan
+  const [nippError, setNippError] = useState('');
 
   // Data yang di-fetch dari spreadsheet
   const [pegawaiData, setPegawaiData] = useState(null);
@@ -39,10 +39,10 @@ function App() {
   ];
 
   const CURRENT_YEAR = new Date().getFullYear();
-  const [identity,       setIdentity]       = useState({ nipp: '', bulan: '', tahun: '' });
+  const [identity, setIdentity] = useState({ nipp: '', bulan: '', tahun: String(CURRENT_YEAR) });
   const [identityErrors, setIdentityErrors] = useState({});
 
-  const [files,      setFiles]      = useState({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
+  const [files, setFiles] = useState({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
   const [fileErrors, setFileErrors] = useState({});
 
   const nippInputRef = useRef(null);
@@ -100,14 +100,14 @@ function App() {
     const iErrors = {};
     const fErrors = {};
 
-    if (!identity.nipp.trim())  iErrors.nipp  = 'NIPP wajib diisi.';
-    if (!nippFound)              iErrors.nipp  = 'Cari NIPP terlebih dahulu dan pastikan data ditemukan.';
-    if (!identity.bulan)         iErrors.bulan = 'Bulan wajib dipilih.';
-    if (!identity.tahun)                                iErrors.tahun = 'Tahun wajib diisi.';
+    if (!identity.nipp.trim()) iErrors.nipp = 'NIPP wajib diisi.';
+    if (!nippFound) iErrors.nipp = 'Cari NIPP terlebih dahulu dan pastikan data ditemukan.';
+    if (!identity.bulan) iErrors.bulan = 'Bulan wajib dipilih.';
+    if (!identity.tahun) iErrors.tahun = 'Tahun wajib diisi.';
     else if (!/^\d{4}$/.test(identity.tahun.toString())) iErrors.tahun = 'Tahun harus 4 digit angka.';
 
-    if (!files.smartcard)              fErrors.smartcard              = 'Smartcard wajib diunggah.';
-    if (!files.hadir)                  fErrors.hadir                  = 'Daftar hadir wajib diunggah.';
+    if (!files.smartcard) fErrors.smartcard = 'Smartcard wajib diunggah.';
+    if (!files.hadir) fErrors.hadir = 'Daftar hadir wajib diunggah.';
     if (!files.serahTerimaDokumentasi) fErrors.serahTerimaDokumentasi = 'Serah Terima & Dokumentasi wajib diunggah.';
 
     setIdentityErrors(iErrors);
@@ -127,12 +127,12 @@ function App() {
 
     try {
       const mergedPdf = await PDFDocument.create();
-      const logoUrl   = window.location.origin + '/logo-kai.png';
+      const logoUrl = window.location.origin + '/logo-kai.png';
 
-      const namaUpper    = pegawaiData.nama.trim().toUpperCase();
-      const nippUpper    = identity.nipp.trim().toUpperCase();
+      const namaUpper = pegawaiData.nama.trim().toUpperCase();
+      const nippUpper = identity.nipp.trim().toUpperCase();
       const jabatanUpper = pegawaiData.jabatan.trim().toUpperCase();
-      const periodeStr   = `${identity.bulan} ${identity.tahun}`;
+      const periodeStr = `${identity.bulan} ${identity.tahun}`;
       const tmtJabatanStr = pegawaiData.tmtJabatan;
       const tmtPensiunStr = pegawaiData.tmtPensiun;
 
@@ -147,7 +147,7 @@ function App() {
 
       // 2. Proses tiap dokumen
       const dokList = [
-        { file: files.hadir,                  label: 'Daftar Hadir' },
+        { file: files.hadir, label: 'Daftar Hadir' },
         { file: files.serahTerimaDokumentasi, label: 'Serah Terima & Dokumentasi' },
       ];
 
@@ -160,16 +160,16 @@ function App() {
       for (const { file, label } of dokList) {
         setProgress(`Memproses: ${label}...`);
         if (file.type === 'application/pdf') {
-          const buf      = await readFileAsArrayBuffer(file);
+          const buf = await readFileAsArrayBuffer(file);
           const donorPdf = await PDFDocument.load(buf);
-          
+
           // Force all PDF pages to A4 Portrait
           const embeddedPages = await mergedPdf.embedPages(donorPdf.getPages());
           for (const embPage of embeddedPages) {
             const A4W = 595;
             const A4H = 842;
             const page = mergedPdf.addPage([A4W, A4H]);
-            
+
             // Kalkulasi skala agar fit ke A4
             const ratio = Math.min(A4W / embPage.width, A4H / embPage.height);
             const drawW = embPage.width * ratio;
@@ -190,7 +190,7 @@ function App() {
       // 3. Simpan & download
       setProgress('Menyimpan PDF...');
       const pdfBytes = await mergedPdf.save();
-      const blob     = new Blob([pdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const sanitize = (str) => (str || '').toString().trim().replace(/[<>:"/\\|?*]/g, '');
       const rawFilename = `${sanitize(namaUpper)} ${sanitize(nippUpper)} ${sanitize(jabatanUpper)} ${sanitize(identity.bulan)} ${sanitize(identity.tahun)} ${sanitize(pegawaiData.stasiun)}`;
       const filename = `${rawFilename.replace(/\s+/g, ' ')}.pdf`;
@@ -220,7 +220,7 @@ function App() {
 
   const handleReset = () => {
     setStep('form');
-    setIdentity({ nipp: '', bulan: '', tahun: '' });
+    setIdentity({ nipp: '', bulan: '', tahun: String(CURRENT_YEAR) });
     setIdentityErrors({});
     setFiles({ smartcard: null, hadir: null, serahTerimaDokumentasi: null });
     setFileErrors({});
@@ -350,16 +350,12 @@ function App() {
                     <label htmlFor="inputTahun" className="field-label">Tahun</label>
                     <input
                       id="inputTahun"
-                      type="number"
-                      inputMode="numeric"
-                      className={`field-input ${identityErrors.tahun ? 'has-error' : ''}`}
-                      placeholder={`Contoh: ${CURRENT_YEAR}`}
+                      type="text"
+                      className="field-input field-readonly"
                       value={identity.tahun}
-                      onChange={(e) => handleIdentityChange('tahun', e.target.value)}
-                      autoComplete="off"
-                      min="2000"
+                      readOnly
+                      disabled
                     />
-                    {identityErrors.tahun && <p className="field-error">{identityErrors.tahun}</p>}
                   </div>
                 </div>
 

@@ -165,6 +165,15 @@
   font-weight: 400;
 }
 
+.field-readonly,
+.field-input:disabled {
+  background-color: #f1f5f9;
+  color: #475569;
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+  user-select: none;
+}
+
 /* ============================================
    NIPP ROW (input + tombol Cari)
    ============================================ */
